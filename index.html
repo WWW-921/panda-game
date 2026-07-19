@@ -799,6 +799,20 @@
         }
     }
 
+    // 通用圆角矩形路径（不依赖 roundRect API）
+    function roundedRect(x, y, w, h, r) {
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
+
     function drawHitWords() {
         if (hitWords.length === 0 || gameState !== 'playing') return;
         try {
@@ -811,39 +825,39 @@
 
         const word = hitWords[hitWordIndex];
         const px = panda.x;
-        const py = panda.y + 58; // 熊猫脚下
+        const py = panda.y + 46; // 熊猫脚上方一点，确保可见
 
         // 进度指示（小圆点）
-        const dotSpacing = 10;
+        const dotSpacing = 12;
         const dotsWidth = (hitWords.length - 1) * dotSpacing;
         const startX = px - dotsWidth / 2;
         for (let i = 0; i < hitWords.length; i++) {
             ctx.beginPath();
-            ctx.arc(startX + i * dotSpacing, py + 20, i === hitWordIndex ? 3.5 : 2, 0, Math.PI * 2);
+            ctx.arc(startX + i * dotSpacing, py + 22, i === hitWordIndex ? 4 : 2.5, 0, Math.PI * 2);
             ctx.fillStyle = i === hitWordIndex ? '#FFD700' : 'rgba(255,255,255,0.5)';
             ctx.fill();
         }
 
         // 单词背景框
-        const fontSize = 18;
+        const fontSize = 20;
         ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
         const textWidth = ctx.measureText(word).width;
-        const boxW = textWidth + 24;
-        const boxH = 30;
+        const boxW = textWidth + 28;
+        const boxH = 32;
         const boxX = px - boxW / 2;
         const boxY = py - boxH / 2;
 
         // 圆角背景
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+        roundedRect(boxX, boxY, boxW, boxH, 8);
         ctx.fill();
 
         // 发光边框
         ctx.strokeStyle = '#FFD700';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+        roundedRect(boxX, boxY, boxW, boxH, 8);
         ctx.stroke();
 
         // 单词文字
@@ -851,16 +865,16 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.shadowColor = '#FFD700';
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 8;
         ctx.fillText(word, px, py);
         ctx.shadowBlur = 0;
 
         // 序号标签
-        ctx.font = 'bold 10px Arial';
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.fillText(`${hitWordIndex + 1}/${hitWords.length}`, px, py + 20);
+        ctx.font = 'bold 11px Arial';
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillText(`${hitWordIndex + 1}/${hitWords.length}`, px, py + 22);
 
-        } catch(e) { /* 防止轮播渲染错误导致游戏卡死 */ }
+        } catch(e) { console.error('drawHitWords error:', e); }
     }
 
     // 背景
