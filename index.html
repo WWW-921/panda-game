@@ -221,6 +221,7 @@
     let isSpeaking = false;       // 手动追踪朗读状态
     let pendingWord = null;       // 等待朗读的下一个单词
     let speechSafetyTimer = null; // 安全超时器
+    let speechUnlocked = false;   // Chrome语音门控是否已解锁
 
     function initSpeech() {
         if (!window.speechSynthesis) return;
@@ -235,13 +236,24 @@
         setVoice();
         speechSynthesis.onvoiceschanged = setVoice;
         speechSynthesis.getVoices();
+
+        // 【关键修复】在用户点击事件中立即朗读一个“无声”单词
+        // Chrome 要求第一次 speak() 必须在用户手势中触发，否则后续语音全部静音
+        const unlock = new SpeechSynthesisUtterance(' ');
+        unlock.volume = 0.01;  // 极低音量，几乎听不到
+        unlock.lang = 'en-US';
+        unlock.onend = () => { speechUnlocked = true; };
+        speechSynthesis.speak(unlock);
     }
 
     function doSpeak(word) {
         if (!speechReady || !word) return;
         isSpeaking = true;
-        // 先清理可能卡住的旧状态
-        speechSynthesis.cancel();
+
+        // 只在解锁完成后才 cancel，避免杀掉解锁语音
+        if (speechUnlocked) {
+            speechSynthesis.cancel();
+        }
 
         // 用 setTimeout 给 cancel 留出执行时间
         setTimeout(() => {
@@ -255,8 +267,8 @@
             // 朗读完成回调
             u.onend = () => {
                 isSpeaking = false;
+                speechUnlocked = true; // 成功朗读后保持解锁状态
                 clearTimeout(speechSafetyTimer);
-                // 如果有等待的单词，立即朗读
                 if (pendingWord) {
                     const next = pendingWord;
                     pendingWord = null;
@@ -264,7 +276,6 @@
                 }
             };
 
-            // 出错时也重置状态
             u.onerror = () => {
                 isSpeaking = false;
                 clearTimeout(speechSafetyTimer);
@@ -272,7 +283,7 @@
 
             speechSynthesis.speak(u);
 
-            // 安全超时：根据单词长度计算最大等待时间，防止 onend 不触发
+            // 安全超时
             const maxTime = Math.max(2500, word.length * 200);
             speechSafetyTimer = setTimeout(() => {
                 if (isSpeaking) {
@@ -280,7 +291,7 @@
                     isSpeaking = false;
                 }
             }, maxTime);
-        }, 50);  // 50ms 延迟确保 cancel 完成
+        }, speechUnlocked ? 50 : 200);  // 未解锁时多等一下
     }
 
     function speakWord(word) {
