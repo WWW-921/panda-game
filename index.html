@@ -149,12 +149,16 @@
             <button class="btn" id="startBtn">🎮 开始游戏</button>
         </div>
         <div id="gameOverScreen" class="hidden">
-            <div class="emoji-big">😢</div>
+            <div class="emoji-big">🏆</div>
             <h1>游戏结束</h1>
             <p>最终得分</p>
             <div id="finalScore">0</div>
             <p id="highScoreText"></p>
-            <button class="btn" id="restartBtn">🔄 再玩一次</button>
+            <div id="learningReport" style="max-height:180px;overflow-y:auto;margin:12px 0;padding:8px;background:rgba(255,255,255,0.1);border-radius:12px;"></div>
+            <div style="display:flex;gap:12px;">
+                <button class="btn" id="restartBtn">🔄 再玩一次</button>
+                <button class="btn" id="reviewBtn" style="background:linear-gradient(135deg,#FF9800,#F57C00)">📚 复习单词</button>
+            </div>
         </div>
     </div>
 
@@ -214,21 +218,100 @@
     // 用户选择的年级（默认1年级）
     let selectedGrade = 1;
 
-    // 英文单词词库（小学 1-6 年级）
+    // 英文单词词库（小学 1-6 年级，每年级60词，含中文释义）
     const wordBank = {
-        1: ['cat','dog','sun','red','big','run','hat','cup','pen','bed','pig','cow','mom','dad','ten','sit','hot','box','map','bus'],
-        2: ['apple','happy','water','green','house','mouse','train','book','fish','tree','star','milk','bird','cake','rice','hand','nose','blue','jump','read'],
-        3: ['school','friend','yellow','monkey','rabbit','flower','garden','window','orange','pencil','animal','sister','brother','mother','father','table','chair','bread','grape','peach'],
-        4: ['family','dinner','summer','winter','spring','autumn','library','village','bridge','market','forest','river','mountain','island','doctor','teacher','student','kitchen','bedroom','present'],
-        5: ['beautiful','morning','holiday','science','music','country','between','tomorrow','weather','kitchen','elephant','remember','together','exercise','breakfast','homework','computer','picture','sandwich','adventure'],
-        6: ['important','different','question','answer','language','internet','magazine','hospital','restaurant','dictionary','environment','education','knowledge','experience','calendar','invitation','wonderful','dangerous','delicious','celebrate']
+        1: [
+            {w:'cat',cn:'猫'},{w:'dog',cn:'狗'},{w:'sun',cn:'太阳'},{w:'red',cn:'红色'},{w:'big',cn:'大的'},
+            {w:'run',cn:'跑'},{w:'hat',cn:'帽子'},{w:'cup',cn:'杯子'},{w:'pen',cn:'钢笔'},{w:'bed',cn:'床'},
+            {w:'pig',cn:'猪'},{w:'cow',cn:'牛'},{w:'mom',cn:'妈妈'},{w:'dad',cn:'爸爸'},{w:'ten',cn:'十'},
+            {w:'sit',cn:'坐'},{w:'hot',cn:'热的'},{w:'box',cn:'盒子'},{w:'map',cn:'地图'},{w:'bus',cn:'公交车'},
+            {w:'one',cn:'一'},{w:'two',cn:'二'},{w:'three',cn:'三'},{w:'blue',cn:'蓝色'},{w:'fish',cn:'鱼'},
+            {w:'bird',cn:'鸟'},{w:'egg',cn:'鸡蛋'},{w:'milk',cn:'牛奶'},{w:'rice',cn:'米饭'},{w:'book',cn:'书'},
+            {w:'eye',cn:'眼睛'},{w:'ear',cn:'耳朵'},{w:'nose',cn:'鼻子'},{w:'hand',cn:'手'},{w:'foot',cn:'脚'},
+            {w:'boy',cn:'男孩'},{w:'girl',cn:'女孩'},{w:'baby',cn:'宝宝'},{w:'yes',cn:'是'},{w:'no',cn:'不'},
+            {w:'up',cn:'上'},{w:'down',cn:'下'},{w:'go',cn:'去'},{w:'come',cn:'来'},{w:'eat',cn:'吃'},
+            {w:'fly',cn:'飞'},{w:'see',cn:'看见'},{w:'say',cn:'说'},{w:'my',cn:'我的'},{w:'you',cn:'你'},
+            {w:'he',cn:'他'},{w:'she',cn:'她'},{w:'it',cn:'它'},{w:'we',cn:'我们'},{w:'toy',cn:'玩具'},
+            {w:'ball',cn:'球'},{w:'cake',cn:'蛋糕'},{w:'tree',cn:'树'},{w:'star',cn:'星星'},{w:'moon',cn:'月亮'}
+        ],
+        2: [
+            {w:'apple',cn:'苹果'},{w:'happy',cn:'开心'},{w:'water',cn:'水'},{w:'green',cn:'绿色'},{w:'house',cn:'房子'},
+            {w:'mouse',cn:'老鼠'},{w:'train',cn:'火车'},{w:'book',cn:'书'},{w:'fish',cn:'鱼'},{w:'tree',cn:'树'},
+            {w:'star',cn:'星星'},{w:'milk',cn:'牛奶'},{w:'bird',cn:'鸟'},{w:'cake',cn:'蛋糕'},{w:'rice',cn:'米饭'},
+            {w:'hand',cn:'手'},{w:'nose',cn:'鼻子'},{w:'blue',cn:'蓝色'},{w:'jump',cn:'跳'},{w:'read',cn:'读'},
+            {w:'duck',cn:'鸭子'},{w:'bear',cn:'熊'},{w:'lion',cn:'狮子'},{w:'tiger',cn:'老虎'},{w:'monkey',cn:'猴子'},
+            {w:'white',cn:'白色'},{w:'black',cn:'黑色'},{w:'pink',cn:'粉色'},{w:'brown',cn:'棕色'},{w:'yellow',cn:'黄色'},
+            {w:'bread',cn:'面包'},{w:'meat',cn:'肉'},{w:'soup',cn:'汤'},{w:'candy',cn:'糖果'},{w:'juice',cn:'果汁'},
+            {w:'head',cn:'头'},{w:'arm',cn:'手臂'},{w:'leg',cn:'腿'},{w:'mouth',cn:'嘴巴'},{w:'face',cn:'脸'},
+            {w:'walk',cn:'走'},{w:'swim',cn:'游泳'},{w:'sing',cn:'唱歌'},{w:'draw',cn:'画画'},{w:'play',cn:'玩'},
+            {w:'sleep',cn:'睡觉'},{w:'drink',cn:'喝'},{w:'open',cn:'打开'},{w:'close',cn:'关闭'},{w:'like',cn:'喜欢'},
+            {w:'love',cn:'爱'},{w:'help',cn:'帮助'},{w:'give',cn:'给'},{w:'take',cn:'拿'},{w:'make',cn:'制作'},
+            {w:'door',cn:'门'},{w:'desk',cn:'书桌'},{w:'bag',cn:'书包'},{w:'shoe',cn:'鞋子'},{w:'coat',cn:'外套'}
+        ],
+        3: [
+            {w:'school',cn:'学校'},{w:'friend',cn:'朋友'},{w:'yellow',cn:'黄色'},{w:'monkey',cn:'猴子'},{w:'rabbit',cn:'兔子'},
+            {w:'flower',cn:'花'},{w:'garden',cn:'花园'},{w:'window',cn:'窗户'},{w:'orange',cn:'橙子'},{w:'pencil',cn:'铅笔'},
+            {w:'animal',cn:'动物'},{w:'sister',cn:'姐妹'},{w:'brother',cn:'兄弟'},{w:'mother',cn:'母亲'},{w:'father',cn:'父亲'},
+            {w:'table',cn:'桌子'},{w:'chair',cn:'椅子'},{w:'bread',cn:'面包'},{w:'grape',cn:'葡萄'},{w:'peach',cn:'桃子'},
+            {w:'teacher',cn:'老师'},{w:'student',cn:'学生'},{w:'class',cn:'班级'},{w:'ruler',cn:'尺子'},{w:'eraser',cn:'橡皮'},
+            {w:'doctor',cn:'医生'},{w:'nurse',cn:'护士'},{w:'driver',cn:'司机'},{w:'farmer',cn:'农民'},{w:'police',cn:'警察'},
+            {w:'sunny',cn:'晴天'},{w:'rainy',cn:'下雨'},{w:'cloudy',cn:'多云'},{w:'windy',cn:'有风'},{w:'snowy',cn:'下雪'},
+            {w:'spring',cn:'春天'},{w:'summer',cn:'夏天'},{w:'autumn',cn:'秋天'},{w:'winter',cn:'冬天'},{w:'today',cn:'今天'},
+            {w:'chicken',cn:'鸡肉'},{w:'noodle',cn:'面条'},{w:'banana',cn:'香蕉'},{w:'melon',cn:'瓜'},{w:'lemon',cn:'柠檬'},
+            {w:'kitchen',cn:'厨房'},{w:'bedroom',cn:'卧室'},{w:'bathroom',cn:'浴室'},{w:'park',cn:'公园'},{w:'zoo',cn:'动物园'},
+            {w:'bike',cn:'自行车'},{w:'boat',cn:'小船'},{w:'plane',cn:'飞机'},{w:'car',cn:'汽车'},{w:'taxi',cn:'出租车'},
+            {w:'clock',cn:'时钟'},{w:'phone',cn:'电话'},{w:'picture',cn:'图片'},{w:'music',cn:'音乐'},{w:'game',cn:'游戏'}
+        ],
+        4: [
+            {w:'family',cn:'家庭'},{w:'dinner',cn:'晚餐'},{w:'summer',cn:'夏天'},{w:'winter',cn:'冬天'},{w:'spring',cn:'春天'},
+            {w:'autumn',cn:'秋天'},{w:'library',cn:'图书馆'},{w:'village',cn:'村庄'},{w:'bridge',cn:'桥'},{w:'market',cn:'市场'},
+            {w:'forest',cn:'森林'},{w:'river',cn:'河流'},{w:'mountain',cn:'山'},{w:'island',cn:'岛屿'},{w:'doctor',cn:'医生'},
+            {w:'teacher',cn:'老师'},{w:'student',cn:'学生'},{w:'kitchen',cn:'厨房'},{w:'bedroom',cn:'卧室'},{w:'present',cn:'礼物'},
+            {w:'supermarket',cn:'超市'},{w:'hospital',cn:'医院'},{w:'cinema',cn:'电影院'},{w:'museum',cn:'博物馆'},{w:'station',cn:'车站'},
+            {w:'postcard',cn:'明信片'},{w:'stamp',cn:'邮票'},{w:'letter',cn:'信'},{w:'email',cn:'电子邮件'},{w:'story',cn:'故事'},
+            {w:'tomorrow',cn:'明天'},{w:'yesterday',cn:'昨天'},{w:'morning',cn:'早晨'},{w:'evening',cn:'傍晚'},{w:'night',cn:'夜晚'},
+            {w:'homework',cn:'作业'},{w:'English',cn:'英语'},{w:'Chinese',cn:'中文'},{w:'math',cn:'数学'},{w:'science',cn:'科学'},
+            {w:'basketball',cn:'篮球'},{w:'football',cn:'足球'},{w:'swimming',cn:'游泳'},{w:'running',cn:'跑步'},{w:'skating',cn:'滑冰'},
+            {w:'January',cn:'一月'},{w:'March',cn:'三月'},{w:'June',cn:'六月'},{w:'October',cn:'十月'},{w:'December',cn:'十二月'},
+            {w:'holiday',cn:'假日'},{w:'birthday',cn:'生日'},{w:'festival',cn:'节日'},{w:'weekend',cn:'周末'},{w:'party',cn:'派对'},
+            {w:'computer',cn:'电脑'},{w:'camera',cn:'相机'},{w:'fridge',cn:'冰箱'},{w:'window',cn:'窗户'},{w:'garden',cn:'花园'}
+        ],
+        5: [
+            {w:'beautiful',cn:'美丽的'},{w:'morning',cn:'早晨'},{w:'holiday',cn:'假期'},{w:'science',cn:'科学'},{w:'music',cn:'音乐'},
+            {w:'country',cn:'国家'},{w:'between',cn:'之间'},{w:'tomorrow',cn:'明天'},{w:'weather',cn:'天气'},{w:'kitchen',cn:'厨房'},
+            {w:'elephant',cn:'大象'},{w:'remember',cn:'记住'},{w:'together',cn:'一起'},{w:'exercise',cn:'锻炼'},{w:'breakfast',cn:'早餐'},
+            {w:'homework',cn:'作业'},{w:'computer',cn:'电脑'},{w:'picture',cn:'图片'},{w:'sandwich',cn:'三明治'},{w:'adventure',cn:'冒险'},
+            {w:'kind',cn:'善良的'},{w:'clever',cn:'聪明的'},{w:'polite',cn:'有礼貌的'},{w:'shy',cn:'害羞的'},{w:'strict',cn:'严格的'},
+            {w:'tall',cn:'高的'},{w:'short',cn:'矮的'},{w:'young',cn:'年轻的'},{w:'old',cn:'老的'},{w:'strong',cn:'强壮的'},
+            {w:'wash',cn:'洗'},{w:'clean',cn:'打扫'},{w:'cook',cn:'烹饪'},{w:'water',cn:'浇水'},{w:'plant',cn:'种植'},
+            {w:'Monday',cn:'周一'},{w:'Tuesday',cn:'周二'},{w:'Wednesday',cn:'周三'},{w:'Thursday',cn:'周四'},{w:'Friday',cn:'周五'},
+            {w:'often',cn:'经常'},{w:'usually',cn:'通常'},{w:'sometimes',cn:'有时'},{w:'always',cn:'总是'},{w:'never',cn:'从不'},
+            {w:'behind',cn:'在后面'},{w:'beside',cn:'在旁边'},{w:'above',cn:'在上面'},{w:'below',cn:'在下面'},{w:'front',cn:'前面'},
+            {w:'nature',cn:'自然'},{w:'lake',cn:'湖'},{w:'forest',cn:'森林'},{w:'park',cn:'公园'},{w:'village',cn:'村庄'},
+            {w:'fresh',cn:'新鲜的'},{w:'healthy',cn:'健康的'},{w:'sweet',cn:'甜的'},{w:'salty',cn:'咸的'},{w:'delicious',cn:'美味的'}
+        ],
+        6: [
+            {w:'important',cn:'重要的'},{w:'different',cn:'不同的'},{w:'question',cn:'问题'},{w:'answer',cn:'回答'},{w:'language',cn:'语言'},
+            {w:'internet',cn:'互联网'},{w:'magazine',cn:'杂志'},{w:'hospital',cn:'医院'},{w:'restaurant',cn:'餐厅'},{w:'dictionary',cn:'字典'},
+            {w:'environment',cn:'环境'},{w:'education',cn:'教育'},{w:'knowledge',cn:'知识'},{w:'experience',cn:'经验'},{w:'calendar',cn:'日历'},
+            {w:'invitation',cn:'邀请'},{w:'wonderful',cn:'精彩的'},{w:'dangerous',cn:'危险的'},{w:'delicious',cn:'美味的'},{w:'celebrate',cn:'庆祝'},
+            {w:'bought',cn:'买了'},{w:'took',cn:'拿了'},{w:'went',cn:'去了'},{w:'saw',cn:'看见了'},{w:'ate',cn:'吃了'},
+            {w:'camping',cn:'露营'},{w:'fishing',cn:'钓鱼'},{w:'cycling',cn:'骑车'},{w:'space',cn:'太空'},{w:'dinosaur',cn:'恐龙'},
+            {w:'smarter',cn:'更聪明'},{w:'bigger',cn:'更大'},{w:'thinner',cn:'更瘦'},{w:'heavier',cn:'更重'},{w:'longer',cn:'更长'},
+            {w:'worried',cn:'担心的'},{w:'angry',cn:'生气的'},{w:'afraid',cn:'害怕的'},{w:'sad',cn:'难过的'},{w:'happy',cn:'开心的'},
+            {w:'gym',cn:'体育馆'},{w:'ago',cn:'以前'},{w:'cave',cn:'山洞'},{w:'grass',cn:'草'},{w:'shadow',cn:'影子'},
+            {w:'dream',cn:'梦想'},{w:'future',cn:'未来'},{w:'travel',cn:'旅行'},{w:'world',cn:'世界'},{w:'become',cn:'成为'},
+            {w:'together',cn:'一起'},{w:'everyone',cn:'每个人'},{w:'nothing',cn:'没有东西'},{w:'because',cn:'因为'},{w:'before',cn:'之前'},
+            {w:'after',cn:'之后'},{w:'during',cn:'期间'},{w:'country',cn:'国家'},{w:'people',cn:'人们'},{w:'change',cn:'改变'}
+        ]
     };
 
+    // 记录本局击中的单词（用于学习报告）
+    let hitWordsList = [];
+
     function getRandomWord() {
-        // 使用用户选择的年级
         const words = wordBank[selectedGrade];
         const easyWords = selectedGrade > 1 ? wordBank[selectedGrade - 1] : words;
-        // 70%当前年级 + 30%低一年级，混合复习
         const pool = Math.random() < 0.7 ? words : easyWords;
         return pool[Math.floor(Math.random() * pool.length)];
     }
@@ -504,9 +587,9 @@
             if (r <= 0) { type = types[i]; break; }
         }
 
-        const word = getRandomWord();
+        const wordObj = getRandomWord();
         // 根据单词长度调整竹子宽度
-        const baseW = Math.max(40, word.length * 11 + 16);
+        const baseW = Math.max(40, wordObj.w.length * 11 + 16);
         const size = type === 'golden' ? baseW + 6 : type === 'heart' ? baseW : baseW;
         const bamboo = {
             x: 30 + Math.random() * (W - 60),
@@ -514,7 +597,8 @@
             w: size, h: size * 1.6,
             speed: (1.5 + Math.random() * 1.5 + level * 0.15),
             type: type,
-            word: word,
+            word: wordObj.w,
+            wordCn: wordObj.cn,
             rotation: (Math.random() - 0.5) * 0.2,
             rotSpeed: (Math.random() - 0.5) * 0.015,
             hp: type === 'golden' ? 2 : 1
@@ -522,7 +606,7 @@
         bamboos.push(bamboo);
 
         // 掉落时朗读单词
-        speakWord(word);
+        speakWord(wordObj.w);
     }
 
     // 绘制竹子（单词卡片风格）
@@ -812,15 +896,15 @@
     }
 
     // 击中单词轮播（熊猫脚下）
-    let hitWords = [];           // 最近击中的单词
-    let hitWordIndex = 0;        // 当前显示索引
-    let hitWordTimer = 0;        // 切换计时器
-    const HIT_WORD_INTERVAL = 90; // 每90帧(1.5秒)切换
-    const HIT_WORD_MAX = 10;     // 最多保留10个
+    let hitWords = [];           // 最近击中的单词 {w, cn}
+    let hitWordIndex = 0;
+    let hitWordTimer = 0;
+    const HIT_WORD_INTERVAL = 90;
+    const HIT_WORD_MAX = 10;
 
-    function addHitWord(word) {
+    function addHitWord(word, cn) {
         if (!word) return;
-        hitWords.push(word);
+        hitWords.push({w: word, cn: cn});
         if (hitWords.length > HIT_WORD_MAX) {
             hitWords.shift();
             if (hitWordIndex > 0) hitWordIndex--;
@@ -851,7 +935,8 @@
             hitWordIndex = (hitWordIndex + 1) % hitWords.length;
         }
 
-        const word = hitWords[hitWordIndex];
+        const item = hitWords[hitWordIndex];
+        const displayText = `${item.w} (${item.cn})`;
         const px = panda.x;
         const py = panda.y + 46; // 熊猫脚上方一点，确保可见
 
@@ -867,11 +952,11 @@
         }
 
         // 单词背景框
-        const fontSize = 20;
+        const fontSize = 18;
         ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
-        const textWidth = ctx.measureText(word).width;
+        const textWidth = ctx.measureText(displayText).width;
         const boxW = textWidth + 28;
-        const boxH = 32;
+        const boxH = 34;
         const boxX = px - boxW / 2;
         const boxY = py - boxH / 2;
 
@@ -894,7 +979,7 @@
         ctx.textBaseline = 'middle';
         ctx.shadowColor = '#FFD700';
         ctx.shadowBlur = 8;
-        ctx.fillText(word, px, py);
+        ctx.fillText(displayText, px, py);
         ctx.shadowBlur = 0;
 
         // 序号标签
@@ -903,6 +988,136 @@
         ctx.fillText(`${hitWordIndex + 1}/${hitWords.length}`, px, py + 22);
 
         } catch(e) { console.error('drawHitWords error:', e); }
+    }
+
+    // ===== 选择题测验系统 =====
+    let hitCount = 0;        // 击中计数器
+    let quizActive = false;  // 是否正在测验
+    let quizData = null;     // 当前测验数据
+    let quizResult = null;   // 测验结果 ('correct'/'wrong'/null)
+    let quizTimer = 0;       // 结果显示计时
+
+    function triggerQuiz() {
+        // 从本局击中的单词中选一个出题
+        if (hitWordsList.length < 2) return;
+        const correct = hitWordsList[Math.floor(Math.random() * hitWordsList.length)];
+        // 生成 2 个干扰项
+        const allWords = wordBank[selectedGrade];
+        const distractors = [];
+        while (distractors.length < 2) {
+            const rnd = allWords[Math.floor(Math.random() * allWords.length)];
+            if (rnd.w !== correct.w && !distractors.find(d => d.w === rnd.w)) {
+                distractors.push(rnd);
+            }
+        }
+        // 打乱选项顺序
+        const options = [correct, ...distractors].sort(() => Math.random() - 0.5);
+        quizData = { correct, options, correctIndex: options.indexOf(correct) };
+        quizActive = true;
+        quizResult = null;
+        quizTimer = 0;
+    }
+
+    function handleQuizClick(clientX, clientY) {
+        if (!quizActive || quizResult) return;
+        const pos = toCanvasPos(clientX, clientY);
+        const optW = 180, optH = 44, gap = 12;
+        const totalH = 3 * optH + 2 * gap;
+        const startY = H / 2 - totalH / 2 + 50;
+        const startX = W / 2 - optW / 2;
+
+        for (let i = 0; i < 3; i++) {
+            const btnY = startY + i * (optH + gap);
+            if (pos.x >= startX && pos.x <= startX + optW && pos.y >= btnY && pos.y <= btnY + optH) {
+                if (i === quizData.correctIndex) {
+                    quizResult = 'correct';
+                    score += 30;
+                    spawnScorePopup(W / 2, H / 2 - 60, '+30 🎉 答对了!', '#FFD700');
+                    speakWord(quizData.correct.w);
+                } else {
+                    quizResult = 'wrong';
+                    speakWord(quizData.correct.w);
+                    setTimeout(() => speakWord(quizData.correct.w), 800);
+                }
+                quizTimer = 90; // 显示结果 90帧(1.5秒)
+                break;
+            }
+        }
+    }
+
+    function updateQuiz() {
+        if (!quizActive) return false;
+        if (quizResult) {
+            quizTimer--;
+            if (quizTimer <= 0) {
+                quizActive = false;
+                quizData = null;
+                quizResult = null;
+            }
+        }
+        return true; // 测验进行中，暂停游戏更新
+    }
+
+    function drawQuiz() {
+        if (!quizActive || !quizData) return;
+        // 半透明遮罩
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(0, 0, W, H);
+
+        // 题目
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 28px Microsoft YaHei, Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`“${quizData.correct.cn}” 的英文是？`, W / 2, H / 2 - 80);
+
+        // 3个选项
+        const optW = 200, optH = 46, gap = 14;
+        const totalH = 3 * optH + 2 * gap;
+        const startY = H / 2 - totalH / 2 + 50;
+        const startX = W / 2 - optW / 2;
+
+        for (let i = 0; i < 3; i++) {
+            const btnY = startY + i * (optH + gap);
+            const isCorrect = i === quizData.correctIndex;
+
+            // 按钮背景
+            if (quizResult) {
+                if (isCorrect) {
+                    ctx.fillStyle = '#4CAF50'; // 正确=绿色
+                } else {
+                    ctx.fillStyle = '#555';
+                }
+            } else {
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            }
+            ctx.beginPath();
+            roundedRect(startX, btnY, optW, optH, 10);
+            ctx.fill();
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            roundedRect(startX, btnY, optW, optH, 10);
+            ctx.stroke();
+
+            // 选项文字
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 22px Comic Sans MS, cursive';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(quizData.options[i].w, W / 2, btnY + optH / 2);
+        }
+
+        // 结果显示
+        if (quizResult === 'correct') {
+            ctx.fillStyle = '#FFD700';
+            ctx.font = 'bold 32px Microsoft YaHei, Arial';
+            ctx.fillText('🎉 太棒了！+30分', W / 2, startY + totalH + 40);
+        } else if (quizResult === 'wrong') {
+            ctx.fillStyle = '#FF5252';
+            ctx.font = 'bold 24px Microsoft YaHei, Arial';
+            ctx.fillText(`✖ 正确答案是: ${quizData.correct.w}`, W / 2, startY + totalH + 40);
+        }
     }
 
     // 背景
@@ -1017,14 +1232,20 @@
                         score += pts;
                         if (b.type === 'heart' && lives < 5) {
                             lives++;
-                            spawnScorePopup(b.x, b.y, `+❤️ ${b.word}`, '#E91E63');
+                            spawnScorePopup(b.x, b.y, `+❤️ ${b.word}(${b.wordCn})`, '#E91E63');
                         } else {
-                            spawnScorePopup(b.x, b.y, `+${pts} ${b.word}`, b.type === 'golden' ? '#FFD700' : '#4CAF50');
+                            spawnScorePopup(b.x, b.y, `+${pts} ${b.word}(${b.wordCn})`, b.type === 'golden' ? '#FFD700' : '#4CAF50');
                         }
                         const pColor = b.type === 'golden' ? '#FFD700' : b.type === 'heart' ? '#E91E63' : '#66BB6A';
                         spawnParticles(b.x, b.y, pColor, 12);
                         playPopSound(); // 击中音效
-                        addHitWord(b.word); // 记录击中单词
+                        addHitWord(b.word, b.wordCn); // 记录击中单词
+                        hitWordsList.push({w: b.word, cn: b.wordCn}); // 学习报告记录
+                        hitCount++;
+                        // 每击中8根竹子触发一次测验
+                        if (hitCount > 0 && hitCount % 8 === 0) {
+                            triggerQuiz();
+                        }
                         bamboos.splice(i, 1);
                     } else {
                         spawnParticles(bl.x, bl.y, '#A5D6A7', 4);
@@ -1084,8 +1305,35 @@
                 document.getElementById('highScoreText').textContent = `最高分: ${highScore}`;
             }
             document.getElementById('finalScore').textContent = score;
+            // 填充学习报告
+            populateLearningReport();
             document.getElementById('gameOverScreen').classList.remove('hidden');
         }
+    }
+
+    // 填充学习报告
+    function populateLearningReport() {
+        const report = document.getElementById('learningReport');
+        if (hitWordsList.length === 0) {
+            report.innerHTML = '<p style="text-align:center;opacity:0.6">本局未击中任何单词</p>';
+            return;
+        }
+        // 去重
+        const unique = [];
+        const seen = new Set();
+        hitWordsList.forEach(item => {
+            if (!seen.has(item.w)) {
+                seen.add(item.w);
+                unique.push(item);
+            }
+        });
+        let html = `<p style="text-align:center;font-size:14px;margin:0 0 8px 0;opacity:0.8">📝 本局学到 ${unique.length} 个单词</p>`;
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">';
+        unique.forEach(item => {
+            html += `<span style="background:rgba(255,255,255,0.15);padding:4px 10px;border-radius:8px;font-size:14px;cursor:pointer;" onclick="speakWord('${item.w}')" title="点击发音"><b>${item.w}</b> <span style="opacity:0.7">${item.cn}</span></span>`;
+        });
+        html += '</div>';
+        report.innerHTML = html;
     }
 
     function draw() {
@@ -1125,12 +1373,18 @@
             ctx.fillText(s.text, s.x, s.y);
         });
         ctx.globalAlpha = 1;
+
+        // 测验覆盖层（最后绘制）
+        drawQuiz();
     }
 
     function gameLoop() {
         if (!gameRunning) return;
         try {
-            update();
+            // 测验进行中暂停游戏逻辑
+            if (!updateQuiz()) {
+                update();
+            }
             draw();
         } catch(e) {
             console.error('Game loop error:', e);
@@ -1160,6 +1414,12 @@
         hitWords = [];
         hitWordIndex = 0;
         hitWordTimer = 0;
+        hitWordsList = [];
+        hitCount = 0;
+        quizActive = false;
+        quizData = null;
+        quizResult = null;
+        quizTimer = 0;
         initClouds();
         initAudio();   // 初始化音效
         initSpeech();  // 初始化语音
@@ -1188,9 +1448,37 @@
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('restartBtn').addEventListener('click', startGame);
 
+    // 复习模式按钮
+    document.getElementById('reviewBtn').addEventListener('click', () => {
+        // 去重
+        const unique = [];
+        const seen = new Set();
+        hitWordsList.forEach(item => {
+            if (!seen.has(item.w)) { seen.add(item.w); unique.push(item); }
+        });
+        if (unique.length === 0) return;
+        // 依次朗读所有单词，每词间隔 1.2 秒
+        let idx = 0;
+        function speakNext_review() {
+            if (idx >= unique.length) return;
+            speakWord(unique[idx].w);
+            idx++;
+            setTimeout(speakNext_review, 1200);
+        }
+        speakNext_review();
+        // 显示提示
+        document.getElementById('learningReport').insertAdjacentHTML('afterbegin',
+            '<p style="text-align:center;color:#FFD700;font-weight:bold;margin:4px 0">🔊 正在朗读所有单词...</p>');
+    });
+
     // 鼠标支持（点击射击 + 移动熊猫）
     canvas.addEventListener('mousedown', e => {
         if (!gameRunning) return;
+        // 测验模式下处理点击
+        if (quizActive) {
+            handleQuizClick(e.clientX, e.clientY);
+            return;
+        }
         const pos = toCanvasPos(e.clientX, e.clientY);
         panda.x = Math.max(32, Math.min(W - 32, pos.x));
         shoot();
@@ -1206,6 +1494,11 @@
     canvas.addEventListener('touchstart', e => {
         e.preventDefault();
         if (!gameRunning) return;
+        // 测验模式下处理点击
+        if (quizActive) {
+            handleQuizClick(e.touches[0].clientX, e.touches[0].clientY);
+            return;
+        }
         const pos = toCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
         touchX = pos.x;
         panda.x = Math.max(32, Math.min(W - 32, pos.x));
