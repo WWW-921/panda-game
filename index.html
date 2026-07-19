@@ -765,6 +765,83 @@
         scorePopups.push({ x, y, text, color, life: 50, vy: -2 });
     }
 
+    // 击中单词轮播（熊猫脚下）
+    let hitWords = [];           // 最近击中的单词
+    let hitWordIndex = 0;        // 当前显示索引
+    let hitWordTimer = 0;        // 切换计时器
+    const HIT_WORD_INTERVAL = 90; // 每90帧(1.5秒)切换
+    const HIT_WORD_MAX = 10;     // 最多保留10个
+
+    function addHitWord(word) {
+        if (!word) return;
+        hitWords.push(word);
+        if (hitWords.length > HIT_WORD_MAX) {
+            hitWords.shift();
+            if (hitWordIndex > 0) hitWordIndex--;
+        }
+    }
+
+    function drawHitWords() {
+        if (hitWords.length === 0 || gameState !== 'playing') return;
+
+        hitWordTimer++;
+        if (hitWordTimer >= HIT_WORD_INTERVAL) {
+            hitWordTimer = 0;
+            hitWordIndex = (hitWordIndex + 1) % hitWords.length;
+        }
+
+        const word = hitWords[hitWordIndex];
+        const px = panda.x;
+        const py = panda.y + 58; // 熊猫脚下
+
+        // 进度指示（小圆点）
+        const dotSpacing = 10;
+        const dotsWidth = (hitWords.length - 1) * dotSpacing;
+        const startX = px - dotsWidth / 2;
+        for (let i = 0; i < hitWords.length; i++) {
+            ctx.beginPath();
+            ctx.arc(startX + i * dotSpacing, py + 20, i === hitWordIndex ? 3.5 : 2, 0, Math.PI * 2);
+            ctx.fillStyle = i === hitWordIndex ? '#FFD700' : 'rgba(255,255,255,0.5)';
+            ctx.fill();
+        }
+
+        // 单词背景框
+        const fontSize = 18;
+        ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
+        const textWidth = ctx.measureText(word).width;
+        const boxW = textWidth + 24;
+        const boxH = 30;
+        const boxX = px - boxW / 2;
+        const boxY = py - boxH / 2;
+
+        // 圆角背景
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+        ctx.fill();
+
+        // 发光边框
+        ctx.strokeStyle = '#FFD700';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 8);
+        ctx.stroke();
+
+        // 单词文字
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 6;
+        ctx.fillText(word, px, py);
+        ctx.shadowBlur = 0;
+
+        // 序号标签
+        ctx.font = 'bold 10px Arial';
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillText(`${hitWordIndex + 1}/${hitWords.length}`, px, py + 20);
+    }
+
     // 背景
     function drawBackground() {
         // 天空渐变
@@ -884,6 +961,7 @@
                         const pColor = b.type === 'golden' ? '#FFD700' : b.type === 'heart' ? '#E91E63' : '#66BB6A';
                         spawnParticles(b.x, b.y, pColor, 12);
                         playPopSound(); // 击中音效
+                        addHitWord(b.word); // 记录击中单词
                         bamboos.splice(i, 1);
                     } else {
                         spawnParticles(bl.x, bl.y, '#A5D6A7', 4);
@@ -959,6 +1037,9 @@
         // 熊猫
         drawPanda(panda);
 
+        // 击中单词轮播
+        drawHitWords();
+
         // 粒子
         particles.forEach(p => {
             ctx.globalAlpha = p.life / p.maxLife;
@@ -1009,6 +1090,9 @@
         bamboos = [];
         particles = [];
         scorePopups = [];
+        hitWords = [];
+        hitWordIndex = 0;
+        hitWordTimer = 0;
         initClouds();
         initAudio();   // 初始化音效
         initSpeech();  // 初始化语音
