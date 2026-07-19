@@ -814,7 +814,7 @@
     }
 
     function drawHitWords() {
-        if (hitWords.length === 0 || gameState !== 'playing') return;
+        if (hitWords.length === 0 || !gameRunning) return;
         try {
 
         hitWordTimer++;
