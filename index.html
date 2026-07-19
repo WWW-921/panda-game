@@ -595,7 +595,7 @@
             x: 30 + Math.random() * (W - 60),
             y: -40,
             w: size, h: size * 1.6,
-            speed: (1.5 + Math.random() * 1.5 + level * 0.15),
+            speed: (0.6 + Math.random() * 0.4 + Math.min(level * 0.01, 1.2)),
             type: type,
             word: wordObj.w,
             wordCn: wordObj.cn,
@@ -739,21 +739,30 @@
         // 追踪弹目标分配
         const sortedBamboos = [...bamboos].sort((a, b) => a.y - b.y);
 
-        // 全量 7 发弹配置（顺序按解锁优先级排列）
+        // 根据关卡等级决定子弹配置（学习优先，进度缓慢）
+        function getBulletCount() {
+            if (level < 50) return 1;
+            if (level < 150) return 2;
+            if (level < 200) return 3;
+            // 200级起: 3发固定 + 1~4发追踪
+            const homingCount = Math.min(Math.floor((level - 200) / 50) + 1, 4);
+            return 3 + homingCount;
+        }
+
+        // 子弹配置（按解锁顺序排列）
         const allBullets = [
             // 前3发：扇形弹（直线飞行）
             { ox: 0,   vx: 0,    homing: false, r: 7 },   // 第1发：中
-            { ox: -14, vx: -2.4, homing: false, r: 6 },   // 第2发：左
-            { ox: 14,  vx: 2.4,  homing: false, r: 6 },   // 第3发：右
-            // 第4-7发：追踪弹
+            { ox: 14,  vx: 2.4,  homing: false, r: 6 },   // 第2发：右
+            { ox: -14, vx: -2.4, homing: false, r: 6 },   // 第3发：左
+            // 第4-7发：追踪弹（200级起逐步解锁）
             { ox: -7,  vx: -1.0, homing: true,  r: 6 },   // 第4发：追踪-左
             { ox: 7,   vx: 1.0,  homing: true,  r: 6 },   // 第5发：追踪-右
             { ox: -22, vx: -3.2, homing: true,  r: 5 },   // 第6发：追踪-远左
             { ox: 22,  vx: 3.2,  homing: true,  r: 5 },   // 第7发：追踪-远右
         ];
 
-        // 根据关卡决定发射数量（每10关+1发，最多7发）
-        const bulletCount = Math.min(Math.floor((level - 1) / 10) + 1, 7);
+        const bulletCount = getBulletCount();
         const activeBullets = allBullets.slice(0, bulletCount);
 
         // 追踪弹目标分配：每颗子弹分配不同目标
@@ -1215,8 +1224,8 @@
         if (panda.shootCooldown > 0) panda.shootCooldown--;
         if (panda.invincible > 0) panda.invincible--;
 
-        // 生成竹子
-        const spawnRate = Math.max(18, 55 - level * 2);
+        // 生成竹子（慢速学习模式）
+        const spawnRate = level < 50 ? 90 : level < 200 ? 75 : Math.max(50, 70 - Math.floor((level - 200) / 30) * 3);
         if (frameCount % spawnRate === 0) spawnBamboo();
 
         // 更新子弹（追踪飞行）
@@ -1294,7 +1303,7 @@
         level = Math.floor(score / 100) + 1;
 
         // 更新UI
-        const bulletCount = Math.min(Math.floor((level - 1) / 10) + 1, 7);
+        const bulletCount = (function() { if(level<50) return 1; if(level<150) return 2; if(level<200) return 3; return 3 + Math.min(Math.floor((level-200)/50)+1, 4); })();
         document.getElementById('scoreDisplay').textContent = `🎯 ${score}分 | 📗 ${selectedGrade}年级`;
         document.getElementById('levelDisplay').textContent = `⭐ 关卡: ${level}  🔫×${bulletCount}`;
         let heartsStr = '';
