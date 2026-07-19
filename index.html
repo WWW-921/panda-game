@@ -215,14 +215,14 @@
         return pool[Math.floor(Math.random() * pool.length)];
     }
 
-    // 语音朗读（Web Speech API）—— 队列版
+    // 语音朗读（Web Speech API）—— 高效队列版
     let speechReady = false;
     let currentVoice = null;
     let isSpeaking = false;
-    let wordQueue = [];           // 单词队列（可缓存多个）
-    let speechSafetyTimer = null;
+    let wordQueue = [];
     let speechUnlocked = false;
-    const MAX_QUEUE_SIZE = 4;     // 队列最大长度，防止积压过多
+    let lastSpeakTime = 0;
+    const MAX_QUEUE_SIZE = 8;
 
     function initSpeech() {
         if (!window.speechSynthesis) return;
@@ -232,13 +232,13 @@
             currentVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Female')) ||
                            voices.find(v => v.lang === 'en-US') ||
                            voices.find(v => v.lang.startsWith('en')) ||
-                           voices[0];
+                           null;
         };
         setVoice();
         speechSynthesis.onvoiceschanged = setVoice;
         speechSynthesis.getVoices();
 
-        // Chrome 语音门控解锁：在用户点击事件中立即朗读一个“无声”单词
+        // Chrome 语音门控解锁
         const unlock = new SpeechSynthesisUtterance(' ');
         unlock.volume = 0.01;
         unlock.lang = 'en-US';
@@ -246,69 +246,50 @@
         speechSynthesis.speak(unlock);
     }
 
-    function doSpeak(word) {
-        if (!speechReady || !word) return;
-        isSpeaking = true;
-
-        if (speechUnlocked) {
-            speechSynthesis.cancel();
+    function speakNext() {
+        if (!speechReady || wordQueue.length === 0) {
+            isSpeaking = false;
+            return;
         }
+        isSpeaking = true;
+        const word = wordQueue.shift();
 
-        setTimeout(() => {
-            const u = new SpeechSynthesisUtterance(word);
-            u.lang = 'en-US';
-            u.rate = 0.9;    // 加快语速，让单词更快读完
-            u.pitch = 1.1;
-            u.volume = 1.0;
-            if (currentVoice) u.voice = currentVoice;
+        const u = new SpeechSynthesisUtterance(word);
+        u.lang = 'en-US';
+        u.rate = 1.2;       // 快速朗读
+        u.pitch = 1.1;
+        u.volume = 1.0;
+        if (currentVoice) u.voice = currentVoice;
 
-            u.onend = () => {
-                isSpeaking = false;
-                speechUnlocked = true;
-                clearTimeout(speechSafetyTimer);
-                // 读完后立即读队列中的下一个单词
-                if (wordQueue.length > 0) {
-                    const next = wordQueue.shift();
-                    setTimeout(() => doSpeak(next), 100);
-                }
-            };
+        u.onend = () => {
+            speechUnlocked = true;
+            lastSpeakTime = Date.now();
+            // 读完后立即读下一个，不cancel、不延迟
+            speakNext();
+        };
 
-            u.onerror = () => {
-                isSpeaking = false;
-                clearTimeout(speechSafetyTimer);
-                if (wordQueue.length > 0) {
-                    const next = wordQueue.shift();
-                    setTimeout(() => doSpeak(next), 100);
-                }
-            };
+        u.onerror = () => {
+            speechUnlocked = true;
+            lastSpeakTime = Date.now();
+            // 出错跳过，继续下一个
+            speakNext();
+        };
 
-            speechSynthesis.speak(u);
-
-            // 安全超时
-            const maxTime = Math.max(2000, word.length * 150);
-            speechSafetyTimer = setTimeout(() => {
-                if (isSpeaking) {
-                    speechSynthesis.cancel();
-                    isSpeaking = false;
-                    if (wordQueue.length > 0) {
-                        const next = wordQueue.shift();
-                        setTimeout(() => doSpeak(next), 100);
-                    }
-                }
-            }, maxTime);
-        }, speechUnlocked ? 30 : 200);
+        speechSynthesis.speak(u);
     }
 
     function speakWord(word) {
         if (!speechReady || !word) return;
         if (isSpeaking) {
-            // 正在朗读，加入队列（限制最大长度）
-            if (wordQueue.length < MAX_QUEUE_SIZE) {
-                wordQueue.push(word);
+            // 加入队列，超过最大长度则丢弃最早的（保留最新的）
+            wordQueue.push(word);
+            if (wordQueue.length > MAX_QUEUE_SIZE) {
+                wordQueue.shift(); // 丢弃最旧的
             }
             return;
         }
-        doSpeak(word);
+        wordQueue.push(word);
+        speakNext();
     }
 
     // 音效（AudioContext）
