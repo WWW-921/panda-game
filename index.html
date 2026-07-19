@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐼 大熊猫吃竹子</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a27 50%, #1a472a 100%);
+            font-family: 'Comic Sans MS', 'Microsoft YaHei', cursive, sans-serif;
+            overflow: hidden;
+        }
+        #gameContainer {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 80px rgba(76,175,80,0.3);
+        }
+        canvas { display: block; }
+        #ui-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .ui-box {
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            padding: 8px 16px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            z-index: 20;
+            color: white;
+            text-align: center;
+        }
+        #startScreen h1, #gameOverScreen h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+        }
+        #startScreen p, #gameOverScreen p {
+            font-size: 20px;
+            margin: 6px 0;
+            opacity: 0.9;
+        }
+        .btn {
+            margin-top: 24px;
+            padding: 14px 48px;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(145deg, #4CAF50, #2E7D32);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            pointer-events: all;
+            box-shadow: 0 6px 20px rgba(46,125,50,0.5);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn:hover { transform: scale(1.08); box-shadow: 0 8px 28px rgba(46,125,50,0.7); }
+        .btn:active { transform: scale(0.96); }
+        .grade-btn {
+            padding: 8px 14px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .grade-btn:hover { background: rgba(255,255,255,0.3); }
+        .grade-btn.active {
+            background: linear-gradient(145deg, #4CAF50, #2E7D32);
+            border-color: #81C784;
+            box-shadow: 0 2px 10px rgba(76,175,80,0.5);
+        }
+        .emoji-big { font-size: 80px; margin-bottom: 10px; }
+        .controls-hint {
+            margin-top: 20px;
+            display: flex;
+            gap: 20px;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        .controls-hint div {
+            background: rgba(255,255,255,0.15);
+            padding: 8px 14px;
+            border-radius: 10px;
+        }
+        .hidden { display: none !important; }
+        #finalScore { font-size: 60px; color: #FFD700; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-overlay">
+            <div class="ui-box" id="scoreDisplay">🎯 得分: 0</div>
+            <div class="ui-box" id="levelDisplay">⭐ 关卡: 1</div>
+            <div class="ui-box" id="livesDisplay">❤️❤️❤️</div>
+        </div>
+        <div id="startScreen">
+            <div class="emoji-big">🐼</div>
+            <h1>大熊猫吃竹子</h1>
+            <p>帮助可爱的大熊猫吃到从天上掉下来的竹子！</p>
+            <p>竹子上带有英文单词，掉落时会朗读，边玩边学！</p>
+            <div style="margin-top:16px;">
+                <p style="font-size:16px;margin-bottom:8px;">选择单词年级：</p>
+                <div id="gradeSelector" style="display:flex;gap:8px;justify-content:center;">
+                    <button class="grade-btn active" data-grade="1">1年级</button>
+                    <button class="grade-btn" data-grade="2">2年级</button>
+                    <button class="grade-btn" data-grade="3">3年级</button>
+                    <button class="grade-btn" data-grade="4">4年级</button>
+                    <button class="grade-btn" data-grade="5">5年级</button>
+                    <button class="grade-btn" data-grade="6">6年级</button>
+                </div>
+            </div>
+            <div class="controls-hint">
+                <div>⬅️➡️ 移动</div>
+                <div>空格键 射击</div>
+                <div>🖱️ 点击射击</div>
+            </div>
+            <button class="btn" id="startBtn">🎮 开始游戏</button>
+        </div>
+        <div id="gameOverScreen" class="hidden">
+            <div class="emoji-big">😢</div>
+            <h1>游戏结束</h1>
+            <p>最终得分</p>
+            <div id="finalScore">0</div>
+            <p id="highScoreText"></p>
+            <button class="btn" id="restartBtn">🔄 再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 画布尺寸
+    const W = 700, H = 800;
+    canvas.width = W;
+    canvas.height = H;
+
+    // 游戏状态
+    let gameRunning = false;
+    let score = 0;
+    let lives = 3;
+    let level = 1;
+    let highScore = parseInt(localStorage.getItem('pandaHighScore') || '0');
+    let frameCount = 0;
+
+    // 按键状态
+    const keys = {};
+
+    // 大熊猫
+    const panda = {
+        x: W / 2, y: H - 80, w: 64, h: 64, speed: 6,
+        shootCooldown: 0, shootRate: 12,
+        invincible: 0
+    };
+
+    // 游戏对象
+    let bullets = [];
+    let bamboos = [];
+    let particles = [];
+    let powerUps = [];
+    let clouds = [];
+    let stars = [];
+
+    // 用户选择的年级（默认1年级）
+    let selectedGrade = 1;
+
+    // 英文单词词库（小学 1-6 年级）
+    const wordBank = {
+        1: ['cat','dog','sun','red','big','run','hat','cup','pen','bed','pig','cow','mom','dad','ten','sit','hot','box','map','bus'],
+        2: ['apple','happy','water','green','house','mouse','train','book','fish','tree','star','milk','bird','cake','rice','hand','nose','blue','jump','read'],
+        3: ['school','friend','yellow','monkey','rabbit','flower','garden','window','orange','pencil','animal','sister','brother','mother','father','table','chair','bread','grape','peach'],
+        4: ['family','dinner','summer','winter','spring','autumn','library','village','bridge','market','forest','river','mountain','island','doctor','teacher','student','kitchen','bedroom','present'],
+        5: ['beautiful','morning','holiday','science','music','country','between','tomorrow','weather','kitchen','elephant','remember','together','exercise','breakfast','homework','computer','picture','sandwich','adventure'],
+        6: ['important','different','question','answer','language','internet','magazine','hospital','restaurant','dictionary','environment','education','knowledge','experience','calendar','invitation','wonderful','dangerous','delicious','celebrate']
+    };
+
+    function getRandomWord() {
+        // 使用用户选择的年级
+        const words = wordBank[selectedGrade];
+        const easyWords = selectedGrade > 1 ? wordBank[selectedGrade - 1] : words;
+        // 70%当前年级 + 30%低一年级，混合复习
+        const pool = Math.random() < 0.7 ? words : easyWords;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    // 语音朗读（Web Speech API）—— 可靠版
+    let speechReady = false;
+    let currentVoice = null;
+    let isSpeaking = false;       // 手动追踪朗读状态
+    let pendingWord = null;       // 等待朗读的下一个单词
+    let speechSafetyTimer = null; // 安全超时器
+
+    function initSpeech() {
+        if (!window.speechSynthesis) return;
+        speechReady = true;
+        const setVoice = () => {
+            const voices = speechSynthesis.getVoices();
+            currentVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Female')) ||
+                           voices.find(v => v.lang === 'en-US') ||
+                           voices.find(v => v.lang.startsWith('en')) ||
+                           voices[0];
+        };
+        setVoice();
+        speechSynthesis.onvoiceschanged = setVoice;
+        speechSynthesis.getVoices();
+    }
+
+    function doSpeak(word) {
+        if (!speechReady || !word) return;
+        isSpeaking = true;
+        // 先清理可能卡住的旧状态
+        speechSynthesis.cancel();
+
+        // 用 setTimeout 给 cancel 留出执行时间
+        setTimeout(() => {
+            const u = new SpeechSynthesisUtterance(word);
+            u.lang = 'en-US';
+            u.rate = 0.75;
+            u.pitch = 1.1;
+            u.volume = 1.0;
+            if (currentVoice) u.voice = currentVoice;
+
+            // 朗读完成回调
+            u.onend = () => {
+                isSpeaking = false;
+                clearTimeout(speechSafetyTimer);
+                // 如果有等待的单词，立即朗读
+                if (pendingWord) {
+                    const next = pendingWord;
+                    pendingWord = null;
+                    setTimeout(() => doSpeak(next), 200);
+                }
+            };
+
+            // 出错时也重置状态
+            u.onerror = () => {
+                isSpeaking = false;
+                clearTimeout(speechSafetyTimer);
+            };
+
+            speechSynthesis.speak(u);
+
+            // 安全超时：根据单词长度计算最大等待时间，防止 onend 不触发
+            const maxTime = Math.max(2500, word.length * 200);
+            speechSafetyTimer = setTimeout(() => {
+                if (isSpeaking) {
+                    speechSynthesis.cancel();
+                    isSpeaking = false;
+                }
+            }, maxTime);
+        }, 50);  // 50ms 延迟确保 cancel 完成
+    }
+
+    function speakWord(word) {
+        if (!speechReady || !word) return;
+        if (isSpeaking) {
+            // 正在朗读，缓存新单词（只保留最新的）
+            pendingWord = word;
+            return;
+        }
+        doSpeak(word);
+    }
+
+    // 音效（AudioContext）
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playPopSound() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.15);
+    }
+
+    function playSuccessSound() {
+        if (!audioCtx) return;
+        // 连续两个升调音
+        [0, 0.08].forEach((delay, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(500 + i * 200, audioCtx.currentTime + delay);
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + delay + 0.12);
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + 0.12);
+        });
+    }
+
+    // 初始化云朵
+    function initClouds() {
+        clouds = [];
+        for (let i = 0; i < 5; i++) {
+            clouds.push({
+                x: Math.random() * W,
+                y: 50 + Math.random() * 200,
+                w: 60 + Math.random() * 80,
+                speed: 0.2 + Math.random() * 0.3,
+                opacity: 0.15 + Math.random() * 0.15
+            });
+        }
+    }
+
+    // 绘制大熊猫
+    function drawPanda(p) {
+        const cx = p.x, cy = p.y;
+        const flash = p.invincible > 0 && Math.floor(frameCount / 4) % 2;
+
+        if (flash) { ctx.globalAlpha = 0.4; }
+
+        // 身体（白色大圆）
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 8, 28, 32, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // 肚子
+        ctx.fillStyle = '#f0f0e8';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 14, 18, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 头
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(cx, cy - 28, 24, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.stroke();
+
+        // 耳朵
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.arc(cx - 18, cy - 48, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + 18, cy - 48, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 黑眼圈
+        ctx.fillStyle = '#222';
+        ctx.save();
+        ctx.translate(cx - 10, cy - 32);
+        ctx.rotate(-0.2);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(cx + 10, cy - 32);
+        ctx.rotate(0.2);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // 眼白
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath();
+        ctx.arc(cx - 9, cy - 33, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + 9, cy - 33, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 瞳孔
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(cx - 8, cy - 33, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + 10, cy - 33, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 高光
+        ctx.fillStyle = '#FFF';
+        ctx.beginPath();
+        ctx.arc(cx - 7, cy - 34, 1, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx + 11, cy - 34, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 鼻子
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 24, 4, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 嘴巴（微笑）
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(cx - 4, cy - 21, 4, 0, Math.PI * 0.7);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(cx + 4, cy - 21, 4, Math.PI * 0.3, Math.PI);
+        ctx.stroke();
+
+        // 腮红
+        ctx.fillStyle = 'rgba(255,150,150,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(cx - 18, cy - 24, 6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + 18, cy - 24, 6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 手臂（黑色）
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.ellipse(cx - 30, cy + 2, 10, 16, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + 30, cy + 2, 10, 16, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 腿
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.ellipse(cx - 14, cy + 36, 12, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(cx + 14, cy + 36, 12, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = 1;
+    }
+
+    // 竹子
+    function spawnBamboo() {
+        const types = ['normal', 'normal', 'normal', 'golden', 'heart'];
+        const weights = [60, 60, 60, 15, 8];
+        let total = weights.reduce((a, b) => a + b, 0);
+        let r = Math.random() * total;
+        let type = 'normal';
+        for (let i = 0; i < types.length; i++) {
+            r -= weights[i];
+            if (r <= 0) { type = types[i]; break; }
+        }
+
+        const word = getRandomWord();
+        // 根据单词长度调整竹子宽度
+        const baseW = Math.max(40, word.length * 11 + 16);
+        const size = type === 'golden' ? baseW + 6 : type === 'heart' ? baseW : baseW;
+        const bamboo = {
+            x: 30 + Math.random() * (W - 60),
+            y: -40,
+            w: size, h: size * 1.6,
+            speed: (1.5 + Math.random() * 1.5 + level * 0.15),
+            type: type,
+            word: word,
+            rotation: (Math.random() - 0.5) * 0.2,
+            rotSpeed: (Math.random() - 0.5) * 0.015,
+            hp: type === 'golden' ? 2 : 1
+        };
+        bamboos.push(bamboo);
+
+        // 掉落时朗读单词
+        speakWord(word);
+    }
+
+    // 绘制竹子（单词卡片风格）
+    function drawBamboo(b) {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rotation);
+
+        // 根据单词长度计算字体大小
+        const fontSize = Math.min(18, Math.max(12, (b.w - 12) / b.word.length * 1.6));
+
+        if (b.type === 'normal') {
+            // 绿色竹卡片
+            const grad = ctx.createLinearGradient(-b.w/2, 0, b.w/2, 0);
+            grad.addColorStop(0, '#2E7D32');
+            grad.addColorStop(0.3, '#66BB6A');
+            grad.addColorStop(0.7, '#4CAF50');
+            grad.addColorStop(1, '#1B5E20');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(-b.w/2, -b.h/2, b.w, b.h, 8);
+            ctx.fill();
+            ctx.strokeStyle = '#1B5E20';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 竹叶装饰
+            ctx.fillStyle = '#388E3C';
+            ctx.beginPath();
+            ctx.ellipse(b.w/2 + 6, -b.h/2 + 4, 10, 3.5, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 单词文字
+            ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFF';
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 3;
+            ctx.fillText(b.word, 0, 2);
+            ctx.shadowBlur = 0;
+
+        } else if (b.type === 'golden') {
+            // 金色竹卡片
+            const grad = ctx.createLinearGradient(-b.w/2, 0, b.w/2, 0);
+            grad.addColorStop(0, '#FF8F00');
+            grad.addColorStop(0.5, '#FFD54F');
+            grad.addColorStop(1, '#FF8F00');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(-b.w/2, -b.h/2, b.w, b.h, 8);
+            ctx.fill();
+            ctx.strokeStyle = '#E65100';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 发光
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = 'rgba(255,215,0,0.3)';
+            ctx.beginPath();
+            ctx.roundRect(-b.w/2 - 3, -b.h/2 - 3, b.w + 6, b.h + 6, 10);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // ⭐ + 单词
+            ctx.font = '12px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⭐', 0, -b.h/2 + 14);
+            ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#5D4037';
+            ctx.fillText(b.word, 0, 4);
+
+        } else if (b.type === 'heart') {
+            // 爱心竹卡片
+            const grad = ctx.createLinearGradient(-b.w/2, 0, b.w/2, 0);
+            grad.addColorStop(0, '#C2185B');
+            grad.addColorStop(0.5, '#E91E63');
+            grad.addColorStop(1, '#C2185B');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.roundRect(-b.w/2, -b.h/2, b.w, b.h, 8);
+            ctx.fill();
+            ctx.strokeStyle = '#880E4F';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // ❤️ + 单词
+            ctx.font = '12px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('❤️', 0, -b.h/2 + 14);
+            ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFF';
+            ctx.fillText(b.word, 0, 4);
+        }
+
+        ctx.restore();
+    }
+
+    // 坐标换算：屏幕坐标 -> Canvas坐标
+    function toCanvasPos(clientX, clientY) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (clientX - rect.left) * (W / rect.width),
+            y: (clientY - rect.top) * (H / rect.height)
+        };
+    }
+
+    // 子弹（每5关+1发：1-5关1发，6-10关2发，11-15关3发…第4发起为追踪弹，最多7发）
+    function shoot() {
+        if (panda.shootCooldown > 0) return;
+        panda.shootCooldown = panda.shootRate;
+        const baseY = panda.y - 44;
+        const speed = 10;
+
+        // 追踪弹目标分配
+        const sortedBamboos = [...bamboos].sort((a, b) => a.y - b.y);
+
+        // 全量 7 发弹配置（顺序按解锁优先级排列）
+        const allBullets = [
+            // 前3发：扇形弹（直线飞行）
+            { ox: 0,   vx: 0,    homing: false, r: 7 },   // 第1发：中
+            { ox: -14, vx: -2.4, homing: false, r: 6 },   // 第2发：左
+            { ox: 14,  vx: 2.4,  homing: false, r: 6 },   // 第3发：右
+            // 第4-7发：追踪弹
+            { ox: -7,  vx: -1.0, homing: true,  r: 6 },   // 第4发：追踪-左
+            { ox: 7,   vx: 1.0,  homing: true,  r: 6 },   // 第5发：追踪-右
+            { ox: -22, vx: -3.2, homing: true,  r: 5 },   // 第6发：追踪-远左
+            { ox: 22,  vx: 3.2,  homing: true,  r: 5 },   // 第7发：追踪-远右
+        ];
+
+        // 根据关卡决定发射数量（每10关+1发，最多7发）
+        const bulletCount = Math.min(Math.floor((level - 1) / 10) + 1, 7);
+        const activeBullets = allBullets.slice(0, bulletCount);
+
+        let homingIdx = 0;
+        activeBullets.forEach(c => {
+            if (c.homing) {
+                // 追踪弹：角度驱动，自动锁定目标
+                let target = sortedBamboos.length > 0
+                    ? sortedBamboos[homingIdx % sortedBamboos.length]
+                    : null;
+                const angle = Math.atan2(c.vx, speed);
+                bullets.push({
+                    x: panda.x + c.ox, y: baseY,
+                    angle, speed: 9, r: c.r,
+                    homing: true,
+                    target,
+                    turnRate: 0.09 + Math.random() * 0.03,
+                    trail: []
+                });
+                homingIdx++;
+            } else {
+                // 扇形弹：直线飞行
+                bullets.push({
+                    x: panda.x + c.ox, y: baseY,
+                    vx: c.vx, vy: speed, r: c.r,
+                    homing: false
+                });
+            }
+        });
+    }
+
+    // 更新子弹（混合模式）
+    function updateBullets() {
+        bullets.forEach(b => {
+            if (b.homing) {
+                // === 追踪弹 ===
+                b.trail.push({ x: b.x, y: b.y });
+                if (b.trail.length > 6) b.trail.shift();
+
+                if (b.target && bamboos.includes(b.target)) {
+                    const dx = b.target.x - b.x;
+                    const dy = b.target.y - b.y;
+                    const targetAngle = Math.atan2(dx, -dy);
+                    let diff = targetAngle - b.angle;
+                    while (diff > Math.PI) diff -= Math.PI * 2;
+                    while (diff < -Math.PI) diff += Math.PI * 2;
+                    b.angle += Math.sign(diff) * Math.min(Math.abs(diff), b.turnRate);
+                } else {
+                    b.target = null;
+                    let minDist = Infinity;
+                    bamboos.forEach(bam => {
+                        const d = Math.hypot(bam.x - b.x, bam.y - b.y);
+                        if (d < minDist) { minDist = d; b.target = bam; }
+                    });
+                }
+                b.x += Math.sin(b.angle) * b.speed;
+                b.y -= Math.cos(b.angle) * b.speed;
+            } else {
+                // === 扇形弹 ===
+                b.x += b.vx;
+                b.y -= b.vy;
+            }
+        });
+        bullets = bullets.filter(b => b.y > -30 && b.x > -30 && b.x < W + 30);
+    }
+
+    function drawBullet(b) {
+        if (b.homing) {
+            // 追踪弹：金色发光 + 拖尾
+            b.trail.forEach((t, i) => {
+                const alpha = (i + 1) / b.trail.length * 0.4;
+                const radius = b.r * (i + 1) / b.trail.length * 0.7;
+                ctx.fillStyle = `rgba(255,200,50,${alpha})`;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.shadowColor = '#FFD700';
+            ctx.shadowBlur = 10;
+            const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+            grad.addColorStop(0, '#FFF9C4');
+            grad.addColorStop(0.5, '#FFD54F');
+            grad.addColorStop(1, '#FF8F00');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        } else {
+            // 扇形弹：绿色竹叶弹
+            const grad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r);
+            grad.addColorStop(0, '#A5D6A7');
+            grad.addColorStop(1, '#2E7D32');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fill();
+            // 小拖尾
+            ctx.fillStyle = 'rgba(129,199,132,0.3)';
+            ctx.beginPath();
+            ctx.arc(b.x, b.y + 7, b.r * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // 粒子效果
+    function spawnParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            particles.push({
+                x, y,
+                vx: (Math.random() - 0.5) * 8,
+                vy: (Math.random() - 0.5) * 8 - 2,
+                life: 30 + Math.random() * 20,
+                maxLife: 50,
+                r: 2 + Math.random() * 4,
+                color: color
+            });
+        }
+    }
+
+    // 得分弹出
+    let scorePopups = [];
+    function spawnScorePopup(x, y, text, color) {
+        scorePopups.push({ x, y, text, color, life: 50, vy: -2 });
+    }
+
+    // 背景
+    function drawBackground() {
+        // 天空渐变
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+        skyGrad.addColorStop(0, '#87CEEB');
+        skyGrad.addColorStop(0.4, '#B3E5FC');
+        skyGrad.addColorStop(0.75, '#C8E6C9');
+        skyGrad.addColorStop(1, '#4CAF50');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // 太阳
+        ctx.fillStyle = 'rgba(255,235,59,0.3)';
+        ctx.beginPath();
+        ctx.arc(600, 80, 60, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#FFF176';
+        ctx.beginPath();
+        ctx.arc(600, 80, 35, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 云
+        clouds.forEach(c => {
+            c.x += c.speed;
+            if (c.x > W + 100) c.x = -100;
+            ctx.fillStyle = `rgba(255,255,255,${c.opacity})`;
+            ctx.beginPath();
+            ctx.ellipse(c.x, c.y, c.w, c.w * 0.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(c.x - c.w * 0.4, c.y + 5, c.w * 0.6, c.w * 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(c.x + c.w * 0.35, c.y + 3, c.w * 0.5, c.w * 0.28, 0, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // 远山
+        ctx.fillStyle = 'rgba(56,142,60,0.3)';
+        ctx.beginPath();
+        ctx.moveTo(0, H - 100);
+        for (let x = 0; x <= W; x += 50) {
+            ctx.lineTo(x, H - 100 - Math.sin(x * 0.01) * 40 - Math.sin(x * 0.025) * 20);
+        }
+        ctx.lineTo(W, H);
+        ctx.lineTo(0, H);
+        ctx.fill();
+
+        // 草地
+        ctx.fillStyle = '#43A047';
+        ctx.fillRect(0, H - 45, W, 45);
+        const grassGrad = ctx.createLinearGradient(0, H - 45, 0, H);
+        grassGrad.addColorStop(0, '#66BB6A');
+        grassGrad.addColorStop(1, '#2E7D32');
+        ctx.fillStyle = grassGrad;
+        ctx.fillRect(0, H - 45, W, 45);
+
+        // 草丛细节
+        ctx.strokeStyle = '#1B5E20';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < W; i += 12) {
+            const h = 6 + Math.sin(i + frameCount * 0.05) * 3;
+            ctx.beginPath();
+            ctx.moveTo(i, H - 45);
+            ctx.quadraticCurveTo(i + 3, H - 45 - h, i + 6, H - 45);
+            ctx.stroke();
+        }
+    }
+
+    // 主循环
+    function update() {
+        frameCount++;
+
+        // 移动熊猫
+        if (keys['ArrowLeft'] || keys['a']) panda.x -= panda.speed;
+        if (keys['ArrowRight'] || keys['d']) panda.x += panda.speed;
+        panda.x = Math.max(32, Math.min(W - 32, panda.x));
+
+        // 射击
+        if (keys[' '] || keys['ArrowUp']) shoot();
+        if (panda.shootCooldown > 0) panda.shootCooldown--;
+        if (panda.invincible > 0) panda.invincible--;
+
+        // 生成竹子
+        const spawnRate = Math.max(18, 55 - level * 2);
+        if (frameCount % spawnRate === 0) spawnBamboo();
+
+        // 更新子弹（追踪飞行）
+        updateBullets();
+
+        // 更新竹子
+        bamboos.forEach(b => {
+            b.y += b.speed;
+            b.rotation += b.rotSpeed;
+        });
+
+        // 碰撞：子弹 vs 竹子
+        for (let i = bamboos.length - 1; i >= 0; i--) {
+            const b = bamboos[i];
+            for (let j = bullets.length - 1; j >= 0; j--) {
+                const bl = bullets[j];
+                const dx = bl.x - b.x, dy = bl.y - b.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < b.w * 1.1 + bl.r) {
+                    bullets.splice(j, 1);
+                    b.hp--;
+                    if (b.hp <= 0) {
+                        // 击碎竹子
+                        const pts = b.type === 'golden' ? 50 : b.type === 'heart' ? 10 : 10;
+                        score += pts;
+                        if (b.type === 'heart' && lives < 5) {
+                            lives++;
+                            spawnScorePopup(b.x, b.y, `+❤️ ${b.word}`, '#E91E63');
+                        } else {
+                            spawnScorePopup(b.x, b.y, `+${pts} ${b.word}`, b.type === 'golden' ? '#FFD700' : '#4CAF50');
+                        }
+                        const pColor = b.type === 'golden' ? '#FFD700' : b.type === 'heart' ? '#E91E63' : '#66BB6A';
+                        spawnParticles(b.x, b.y, pColor, 12);
+                        playPopSound(); // 击中音效
+                        bamboos.splice(i, 1);
+                    } else {
+                        spawnParticles(bl.x, bl.y, '#A5D6A7', 4);
+                    }
+                    break;
+                }
+            }
+        }
+
+        // 竹子掉到底部
+        for (let i = bamboos.length - 1; i >= 0; i--) {
+            if (bamboos[i].y > H + 40) {
+                if (bamboos[i].type !== 'heart') {
+                    lives--;
+                    panda.invincible = 60;
+                    spawnParticles(bamboos[i].x, H - 30, '#FF5252', 8);
+                }
+                bamboos.splice(i, 1);
+            }
+        }
+
+        // 更新粒子
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.15;
+            p.life--;
+        });
+        particles = particles.filter(p => p.life > 0);
+
+        // 更新得分弹出
+        scorePopups.forEach(s => {
+            s.y += s.vy;
+            s.life--;
+        });
+        scorePopups = scorePopups.filter(s => s.life > 0);
+
+        // 关卡
+        level = Math.floor(score / 100) + 1;
+
+        // 更新UI
+        const bulletCount = Math.min(Math.floor((level - 1) / 10) + 1, 7);
+        document.getElementById('scoreDisplay').textContent = `🎯 ${score}分 | 📗 ${selectedGrade}年级`;
+        document.getElementById('levelDisplay').textContent = `⭐ 关卡: ${level}  🔫×${bulletCount}`;
+        let heartsStr = '';
+        for (let i = 0; i < lives; i++) heartsStr += '❤️';
+        document.getElementById('livesDisplay').textContent = heartsStr || '💀';
+
+        // 游戏结束
+        if (lives <= 0) {
+            gameRunning = false;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('pandaHighScore', highScore.toString());
+                document.getElementById('highScoreText').textContent = `🎉 新纪录！最高分: ${highScore}`;
+            } else {
+                document.getElementById('highScoreText').textContent = `最高分: ${highScore}`;
+            }
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+    }
+
+    function draw() {
+        drawBackground();
+
+        // 子弹
+        bullets.forEach(drawBullet);
+
+        // 竹子
+        bamboos.forEach(drawBamboo);
+
+        // 熊猫
+        drawPanda(panda);
+
+        // 粒子
+        particles.forEach(p => {
+            ctx.globalAlpha = p.life / p.maxLife;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r * (p.life / p.maxLife), 0, Math.PI * 2);
+            ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        // 得分弹出
+        scorePopups.forEach(s => {
+            ctx.globalAlpha = s.life / 50;
+            ctx.font = 'bold 22px Comic Sans MS, Microsoft YaHei, cursive';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = s.color;
+            ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+            ctx.lineWidth = 3;
+            ctx.strokeText(s.text, s.x, s.y);
+            ctx.fillText(s.text, s.x, s.y);
+        });
+        ctx.globalAlpha = 1;
+    }
+
+    function gameLoop() {
+        if (!gameRunning) return;
+        update();
+        draw();
+        // Chrome 语音合成防卡死：每 8 秒做一次 pause+resume
+        if (speechReady && frameCount % 480 === 0) {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.pause();
+                speechSynthesis.resume();
+            }
+        }
+        requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+        score = 0;
+        lives = 3;
+        level = 1;
+        frameCount = 0;
+        panda.x = W / 2;
+        panda.shootCooldown = 0;
+        panda.invincible = 0;
+        bullets = [];
+        bamboos = [];
+        particles = [];
+        scorePopups = [];
+        initClouds();
+        initAudio();   // 初始化音效
+        initSpeech();  // 初始化语音
+        gameRunning = true;
+        document.getElementById('startScreen').classList.add('hidden');
+        document.getElementById('gameOverScreen').classList.add('hidden');
+        gameLoop();
+    }
+
+    // 事件
+    document.addEventListener('keydown', e => {
+        keys[e.key] = true;
+        if (e.key === ' ') e.preventDefault();
+    });
+    document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    // 年级选择器
+    document.querySelectorAll('.grade-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedGrade = parseInt(btn.dataset.grade);
+        });
+    });
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+
+    // 鼠标支持（点击射击 + 移动熊猫）
+    canvas.addEventListener('mousedown', e => {
+        if (!gameRunning) return;
+        const pos = toCanvasPos(e.clientX, e.clientY);
+        panda.x = Math.max(32, Math.min(W - 32, pos.x));
+        shoot();
+    });
+    canvas.addEventListener('mousemove', e => {
+        if (!gameRunning || !e.buttons) return;
+        const pos = toCanvasPos(e.clientX, e.clientY);
+        panda.x = Math.max(32, Math.min(W - 32, pos.x));
+    });
+
+    // 触摸支持（移动端）
+    let touchX = null;
+    canvas.addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (!gameRunning) return;
+        const pos = toCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
+        touchX = pos.x;
+        panda.x = Math.max(32, Math.min(W - 32, pos.x));
+        shoot();
+    });
+    canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        if (!gameRunning) return;
+        const pos = toCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
+        panda.x = Math.max(32, Math.min(W - 32, pos.x));
+        touchX = pos.x;
+    });
+    canvas.addEventListener('touchend', () => { touchX = null; });
+
+    // 初始绘制背景
+    initClouds();
+    drawBackground();
+    drawPanda(panda);
+    </script>
+</body>
+</html>
