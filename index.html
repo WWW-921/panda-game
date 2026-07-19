@@ -660,13 +660,24 @@
         const bulletCount = Math.min(Math.floor((level - 1) / 10) + 1, 7);
         const activeBullets = allBullets.slice(0, bulletCount);
 
-        let homingIdx = 0;
+        // 追踪弹目标分配：每颗子弹分配不同目标
+        const usedTargets = new Set();
         activeBullets.forEach(c => {
             if (c.homing) {
-                // 追踪弹：角度驱动，自动锁定目标
-                let target = sortedBamboos.length > 0
-                    ? sortedBamboos[homingIdx % sortedBamboos.length]
-                    : null;
+                // 优先选未被其他子弹追踪的目标
+                let target = null;
+                for (const bam of sortedBamboos) {
+                    if (!usedTargets.has(bam)) {
+                        target = bam;
+                        break;
+                    }
+                }
+                // 所有目标都被分配了，选最近的未被分配目标，或任意目标
+                if (!target && sortedBamboos.length > 0) {
+                    target = sortedBamboos[0];
+                }
+                if (target) usedTargets.add(target);
+
                 const angle = Math.atan2(c.vx, speed);
                 bullets.push({
                     x: panda.x + c.ox, y: baseY,
@@ -676,7 +687,6 @@
                     turnRate: 0.09 + Math.random() * 0.03,
                     trail: []
                 });
-                homingIdx++;
             } else {
                 // 扇形弹：直线飞行
                 bullets.push({
@@ -705,12 +715,30 @@
                     while (diff < -Math.PI) diff += Math.PI * 2;
                     b.angle += Math.sign(diff) * Math.min(Math.abs(diff), b.turnRate);
                 } else {
+                    // 目标被消灭，优先找未被其他子弹追踪的目标
                     b.target = null;
+                    const trackedByOthers = new Set();
+                    bullets.forEach(ob => {
+                        if (ob !== b && ob.homing && ob.target) {
+                            trackedByOthers.add(ob.target);
+                        }
+                    });
                     let minDist = Infinity;
+                    let fallback = null;
+                    let fallbackDist = Infinity;
                     bamboos.forEach(bam => {
                         const d = Math.hypot(bam.x - b.x, bam.y - b.y);
-                        if (d < minDist) { minDist = d; b.target = bam; }
+                        if (!trackedByOthers.has(bam) && d < minDist) {
+                            minDist = d;
+                            b.target = bam;
+                        }
+                        if (d < fallbackDist) {
+                            fallbackDist = d;
+                            fallback = bam;
+                        }
                     });
+                    // 所有目标都被追踪，选最近的
+                    if (!b.target) b.target = fallback;
                 }
                 b.x += Math.sin(b.angle) * b.speed;
                 b.y -= Math.cos(b.angle) * b.speed;
