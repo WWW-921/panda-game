@@ -646,8 +646,12 @@
             ctx.fillStyle = '#FFF';
             ctx.shadowColor = 'rgba(0,0,0,0.4)';
             ctx.shadowBlur = 3;
-            ctx.fillText(b.word, 0, 2);
+            ctx.fillText(b.word, 0, -4);
             ctx.shadowBlur = 0;
+            // 中文释义
+            ctx.font = `${Math.max(10, fontSize - 4)}px 'Microsoft YaHei', Arial`;
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.fillText(b.wordCn, 0, 12);
 
         } else if (b.type === 'golden') {
             // 金色竹卡片
@@ -679,7 +683,11 @@
             ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#5D4037';
-            ctx.fillText(b.word, 0, 4);
+            ctx.fillText(b.word, 0, 0);
+            // 中文释义
+            ctx.font = `${Math.max(10, fontSize - 4)}px 'Microsoft YaHei', Arial`;
+            ctx.fillStyle = 'rgba(93,64,55,0.7)';
+            ctx.fillText(b.wordCn, 0, 14);
 
         } else if (b.type === 'heart') {
             // 爱心竹卡片
@@ -702,7 +710,11 @@
             ctx.font = `bold ${fontSize}px 'Comic Sans MS', cursive`;
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#FFF';
-            ctx.fillText(b.word, 0, 4);
+            ctx.fillText(b.word, 0, 0);
+            // 中文释义
+            ctx.font = `${Math.max(10, fontSize - 4)}px 'Microsoft YaHei', Arial`;
+            ctx.fillStyle = 'rgba(255,255,255,0.75)';
+            ctx.fillText(b.wordCn, 0, 14);
         }
 
         ctx.restore();
@@ -1241,11 +1253,6 @@
                         playPopSound(); // 击中音效
                         addHitWord(b.word, b.wordCn); // 记录击中单词
                         hitWordsList.push({w: b.word, cn: b.wordCn}); // 学习报告记录
-                        hitCount++;
-                        // 每击中8根竹子触发一次测验
-                        if (hitCount > 0 && hitCount % 8 === 0) {
-                            triggerQuiz();
-                        }
                         bamboos.splice(i, 1);
                     } else {
                         spawnParticles(bl.x, bl.y, '#A5D6A7', 4);
@@ -1374,17 +1381,14 @@
         });
         ctx.globalAlpha = 1;
 
-        // 测验覆盖层（最后绘制）
-        drawQuiz();
+        // 测验覆盖层（已禁用弹框模式，保留代码备用）
+        // drawQuiz();
     }
 
     function gameLoop() {
         if (!gameRunning) return;
         try {
-            // 测验进行中暂停游戏逻辑
-            if (!updateQuiz()) {
-                update();
-            }
+            update();
             draw();
         } catch(e) {
             console.error('Game loop error:', e);
@@ -1474,11 +1478,6 @@
     // 鼠标支持（点击射击 + 移动熊猫）
     canvas.addEventListener('mousedown', e => {
         if (!gameRunning) return;
-        // 测验模式下处理点击
-        if (quizActive) {
-            handleQuizClick(e.clientX, e.clientY);
-            return;
-        }
         const pos = toCanvasPos(e.clientX, e.clientY);
         panda.x = Math.max(32, Math.min(W - 32, pos.x));
         shoot();
@@ -1494,11 +1493,6 @@
     canvas.addEventListener('touchstart', e => {
         e.preventDefault();
         if (!gameRunning) return;
-        // 测验模式下处理点击
-        if (quizActive) {
-            handleQuizClick(e.touches[0].clientX, e.touches[0].clientY);
-            return;
-        }
         const pos = toCanvasPos(e.touches[0].clientX, e.touches[0].clientY);
         touchX = pos.x;
         panda.x = Math.max(32, Math.min(W - 32, pos.x));
